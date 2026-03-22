@@ -1,0 +1,92 @@
+#!/usr/bin/env bash
+# claude-mini-hud report
+# Prints a usage summary from ~/.claude/usage-log.jsonl
+#
+# Usage: claude-hud-report [--today|--week|--month|--all]
+
+LOG="$HOME/.claude/usage-log.jsonl"
+
+# ── Parse flags ───────────────────────────────────────────────────────────────
+period="week"
+for arg in "$@"; do
+  case "$arg" in
+    --today) period="today" ;;
+    --week)  period="week"  ;;
+    --month) period="month" ;;
+    --all)   period="all"   ;;
+    -h|--help)
+      echo "Usage: claude-hud-report [--today|--week|--month|--all]"
+      echo "  --today   Last 24 hours"
+      echo "  --week    Last 7 days (default)"
+      echo "  --month   Last 30 days"
+      echo "  --all     All time"
+      exit 0
+      ;;
+  esac
+done
+
+# ── Check log exists ──────────────────────────────────────────────────────────
+if [[ ! -f "$LOG" ]]; then
+  echo "No usage log at $LOG"
+  echo "Log data is recorded at the end of each Claude Code session."
+  exit 0
+fi
+
+# ── Calculate time range ──────────────────────────────────────────────────────
+now=$(date +%s)
+case "$period" in
+  today) since=$(( now - 86400 ))      ; label="Last 24 hours" ;;
+  week)  since=$(( now - 7 * 86400 ))  ; label="Last 7 days"   ;;
+  month) since=$(( now - 30 * 86400 )) ; label="Last 30 days"  ;;
+  all)   since=0                        ; label="All time"      ;;
+esac
+
+# ── ANSI ──────────────────────────────────────────────────────────────────────
+BOLD='\033[1m'; DIM='\033[2m'; GREEN='\033[32m'; RESET='\033[0m'
+SEP="${DIM}─────────────────────────────${RESET}"
+
+# ── Aggregate ─────────────────────────────────────────────────────────────────
+result=$(
+  jq -rcs \
+    --argjson since "$since" \
+    '
+      map(select(.ts > $since)) |
+      if length == 0 then
+        "EMPTY"
+      else
+        {
+          sessions:    (map(.session_id) | unique | length),
+          tokens_in:   (map(.tokens_in   // 0) | add // 0),
+          tokens_out:  (map(.tokens_out  // 0) | add // 0),
+          peak_ctx:    (map(.ctx_pct     // 0) | max  // 0),
+          avg_ctx:     ((map(.ctx_pct    // 0) | add  // 0) /
+                        (map(.ctx_pct   // 0) | map(select(. > 0)) | length | if . == 0 then 1 else . end)
+                        | floor),
+          models:      ([map(.model // "unknown") | .[] | select(. != "" and . != "unknown")]
+                        | if length == 0 then ["unknown"] else . end
+                        | group_by(.) | map("\(.[0]) (\(length))") | join(", "))
+        } |
+        [
+          .sessions    | tostring | "Sessions:   " + .,
+          .tokens_in   | tostring | "Tokens in:  " + .,
+          .tokens_out  | tostring | "Tokens out: " + .,
+          "Peak ctx:   " + (.peak_ctx | tostring) + "%",
+          "Models:     " + .models
+        ] | join("\n")
+      end
+    ' "$LOG" 2>/dev/null
+)
+
+# ── Output ─────────────────────────────────────────────────────────────────────
+printf "\n${BOLD}✦CC✦  claude-mini-hud · %s${RESET}\n" "$label"
+printf "%b\n" "$SEP"
+
+if [[ "$result" == "EMPTY" ]]; then
+  printf "No sessions recorded for this period.\n"
+else
+  while IFS= read -r line; do
+    printf "%s\n" "$line"
+  done <<< "$result"
+fi
+
+printf "%b\n\n" "$SEP"
