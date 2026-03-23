@@ -15,7 +15,7 @@ A terminal HUD for Claude Code showing context usage, session rate limit, and se
 | `▮▮▮▮▯` | 5-hour rate limit battery | Drains as you use your session allowance |
 | `23m` | Session duration | Wall-clock time since session start |
 | `+142 -38` | Lines changed | Shown when non-zero |
-| `★5d` | Streak | Days in a row with a Claude Code session |
+| `♨5d` | Streak | Days in a row with a Claude Code session |
 
 ## State-aware callsign
 
@@ -56,7 +56,7 @@ A terminal HUD for Claude Code showing context usage, session rate limit, and se
 
 **Rate limit running low, streak active:**
 ```
-✦CC✦ ▓▓▓▓░░░░░░ 38% · ▮▮▯▯▯ 18% · 3h 48m · ★7d
+✦CC✦ ▓▓▓▓░░░░░░ 38% · ▮▮▯▯▯ 18% · 3h 48m · ♨7d
 ```
 
 ## Themes

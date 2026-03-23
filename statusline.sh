@@ -123,7 +123,7 @@ else
 fi
 
 streak_str=""
-(( s_count > 1 )) && streak_str=" ${C_DIM}·${C_RESET} ${C_MID}★${s_count}d${C_RESET}"
+(( s_count > 1 )) && streak_str=" ${C_DIM}·${C_RESET} ${C_LOW}♨${s_count}d${C_RESET}"
 
 # ── Output ────────────────────────────────────────────────────────────────────
 out="${callsign_str} ${ctx_bar} ${ctx_num_color}${ctx_pct_str}${C_RESET} ${C_DIM}·${C_RESET} ${bat_color}${battery}${bat_pct_str}${C_RESET} ${C_DIM}·${C_RESET} ${C_DIM}${duration_str}${C_RESET}${diff_str}${streak_str}"
