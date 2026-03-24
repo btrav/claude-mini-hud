@@ -1,0 +1,109 @@
+#!/usr/bin/env bash
+# claude-mini-hud share
+# Prints an ASCII session card — screenshot it and share
+#
+# Usage: claude-hud-share [--copy]
+#   --copy   Copy plain-text card to clipboard (macOS: pbcopy, Linux: xclip)
+
+STATE_FILE="$HOME/.claude/hud-state.tsv"
+
+# ── Check state file ──────────────────────────────────────────────────────────
+if [[ ! -f "$STATE_FILE" ]]; then
+  echo "No session state found. Start a Claude Code session first."
+  exit 0
+fi
+
+IFS=$'\t' read -r ctx_pct rate_remaining duration_ms lines_added lines_removed streak ts model < "$STATE_FILE"
+
+ctx_pct=${ctx_pct:-0}; rate_remaining=${rate_remaining:-0}
+duration_ms=${duration_ms:-0}; lines_added=${lines_added:-0}
+lines_removed=${lines_removed:-0}; streak=${streak:-1}
+model=${model:-"claude"}
+
+# ── Flag parsing ──────────────────────────────────────────────────────────────
+copy_mode=0
+[[ "${1:-}" == "--copy" ]] && copy_mode=1
+
+# ── ANSI (suppressed in copy mode) ───────────────────────────────────────────
+if (( copy_mode == 0 )); then
+  GREEN='\033[32m'; AMBER='\033[33m'; RED='\033[31m'
+  DIM='\033[2m'; BOLD='\033[1m'; RESET='\033[0m'
+else
+  GREEN=''; AMBER=''; RED=''; DIM=''; BOLD=''; RESET=''
+fi
+
+# ── Build context bar (plain, no ANSI — card uses plain chars) ───────────────
+ctx_filled=$(( ctx_pct * 10 / 100 ))
+bar=""
+for (( i=1; i<=10; i++ )); do
+  (( i <= ctx_filled )) && bar+="▓" || bar+="░"
+done
+
+# ── Duration ─────────────────────────────────────────────────────────────────
+total_mins=$(( duration_ms / 60000 ))
+if   (( total_mins >= 60 )); then dur="$((total_mins/60))h $((total_mins%60))m"
+elif (( total_mins > 0   )); then dur="${total_mins}m"
+else                              dur="<1m"
+fi
+
+# ── Optional rows ─────────────────────────────────────────────────────────────
+show_lines=0; show_streak=0
+(( lines_added > 0 || lines_removed > 0 )) && show_lines=1
+(( streak > 1 )) && show_streak=1
+
+# ── Card geometry ─────────────────────────────────────────────────────────────
+# Inner content width: 34 chars
+W=34
+sep=$(printf '─%.0s' $(seq 1 $W))
+
+_row() {
+  # Print a padded card row: │  <content padded to W-2>  │
+  local content="$1"
+  local len=${#content}
+  local pad=$(( W - 2 - len ))
+  (( pad < 0 )) && pad=0
+  printf "│  %s%*s│\n" "$content" "$pad" ""
+}
+
+# ── Render ────────────────────────────────────────────────────────────────────
+card=""
+card+="┌${sep}┐\n"
+card+="│  ${BOLD}✦CC✦  claude-mini-hud${RESET}$(printf '%*s' $((W-21)) '')│\n"
+card+="├${sep}┤\n"
+
+# ctx row — pad manually since bar is plain text here
+ctx_line="ctx   ${bar}  ${ctx_pct}%"
+card+="$(_row "$ctx_line")\n"
+card+="$(_row "time  ${dur}")\n"
+(( show_lines  )) && card+="$(_row "lines +${lines_added} -${lines_removed}")\n"
+(( show_streak )) && card+="$(_row "♨ ${streak} day streak")\n"
+
+# shorten model name for display
+model_short="${model}"
+[[ ${#model_short} -gt 28 ]] && model_short="${model_short:0:25}..."
+card+="$(_row "${model_short}")\n"
+
+card+="├${sep}┤\n"
+card+="$(_row "github.com/btrav/claude-mini-hud")\n"
+card+="└${sep}┘\n"
+
+# ── Output ────────────────────────────────────────────────────────────────────
+if (( copy_mode == 1 )); then
+  # Strip any remaining escape codes and copy
+  plain=$(printf '%b' "$card" | sed 's/\x1b\[[0-9;]*m//g')
+  if command -v pbcopy &>/dev/null; then
+    printf '%s' "$plain" | pbcopy
+    echo "Copied to clipboard."
+  elif command -v xclip &>/dev/null; then
+    printf '%s' "$plain" | xclip -selection clipboard
+    echo "Copied to clipboard."
+  else
+    printf '%b\n' "$card"
+    echo "(No clipboard tool found — printed above)"
+  fi
+else
+  printf '\n'
+  printf '%b' "$card"
+  printf '\n'
+  echo "  Tip: claude-hud-share --copy to copy to clipboard"
+fi

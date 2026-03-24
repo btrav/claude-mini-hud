@@ -25,21 +25,25 @@ C_DIM='\033[2m'
 C_RESET='\033[0m'
 
 # ── Extract all values in a single jq call ───────────────────────────────────
-read -r ctx_pct rate_used duration_ms lines_added lines_removed <<< "$(
+IFS=$'\t' read -r ctx_pct rate_used duration_ms lines_added lines_removed rate_resets_at model_name <<< "$(
   echo "$input" | jq -r '[
     (.context_window.used_percentage        // 0 | floor),
     (.rate_limits.five_hour.used_percentage // 0 | floor),
     (.cost.total_duration_ms                // 0 | floor),
     (.cost.total_lines_added                // 0 | floor),
-    (.cost.total_lines_removed              // 0 | floor)
+    (.cost.total_lines_removed              // 0 | floor),
+    (.rate_limits.five_hour.resets_at       // 0 | if type == "number" then floor else 0 end),
+    (.model.display_name                    // "")
   ] | @tsv' 2>/dev/null
 )"
 ctx_pct=${ctx_pct:-0}; rate_used=${rate_used:-0}; duration_ms=${duration_ms:-0}
 lines_added=${lines_added:-0}; lines_removed=${lines_removed:-0}
+rate_resets_at=${rate_resets_at:-0}
 
 # ── Derived values ───────────────────────────────────────────────────────────
 rate_remaining=$(( 100 - rate_used ))
 (( rate_remaining < 0 )) && rate_remaining=0
+now=$(date +%s)
 
 # ── State-aware callsign ─────────────────────────────────────────────────────
 if   (( ctx_pct >= 90 || rate_remaining <= 5 )); then
@@ -84,9 +88,24 @@ elif (( rate_remaining <= 20 )); then bat_color="$C_MID"
 else                                  bat_color="$C_LOW"
 fi
 
-# Show remaining % when amber or red
+# Show ETA when amber/red, fall back to remaining % if resets_at unavailable
 bat_pct_str=""
-(( rate_remaining <= 20 )) && bat_pct_str=" ${rate_remaining}%"
+if (( rate_remaining <= 20 )); then
+  if (( rate_resets_at > 0 )); then
+    secs_left=$(( rate_resets_at - now ))
+    if (( secs_left > 0 )); then
+      mins_left=$(( secs_left / 60 ))
+      if   (( mins_left >= 60 )); then bat_pct_str=" ~$((mins_left/60))h$((mins_left%60))m"
+      elif (( mins_left > 0  )); then bat_pct_str=" ~${mins_left}m"
+      else                            bat_pct_str=" <1m"
+      fi
+    else
+      bat_pct_str=" soon"
+    fi
+  else
+    bat_pct_str=" ${rate_remaining}%"
+  fi
+fi
 
 # ── Session duration ──────────────────────────────────────────────────────────
 total_mins=$(( duration_ms / 60000 ))
@@ -124,6 +143,13 @@ fi
 
 streak_str=""
 (( s_count > 1 )) && streak_str=" ${C_DIM}·${C_RESET} ${C_LOW}♨${s_count}d${C_RESET}"
+
+# ── Cache state for claude-hud-share ─────────────────────────────────────────
+printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+  "$ctx_pct" "$rate_remaining" "$duration_ms" \
+  "$lines_added" "$lines_removed" "$s_count" \
+  "$now" "${model_name}" \
+  > "$HOME/.claude/hud-state.tsv" 2>/dev/null
 
 # ── Output ────────────────────────────────────────────────────────────────────
 out="${callsign_str} ${ctx_bar} ${ctx_num_color}${ctx_pct_str}${C_RESET} ${C_DIM}·${C_RESET} ${bat_color}${battery}${bat_pct_str}${C_RESET} ${C_DIM}·${C_RESET} ${C_DIM}${duration_str}${C_RESET}${diff_str}${streak_str}"

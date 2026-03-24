@@ -25,14 +25,17 @@ mkdir -p "$CLAUDE_DIR/bin"
 cp "$SCRIPT_DIR/statusline.sh"          "$CLAUDE_DIR/statusline.sh"
 cp "$SCRIPT_DIR/hooks/log-usage.sh"     "$CLAUDE_DIR/hooks/log-usage.sh"
 cp "$SCRIPT_DIR/bin/claude-hud-report"  "$CLAUDE_DIR/bin/claude-hud-report"
+cp "$SCRIPT_DIR/bin/claude-hud-share"   "$CLAUDE_DIR/bin/claude-hud-share"
 
 chmod +x "$CLAUDE_DIR/statusline.sh"
 chmod +x "$CLAUDE_DIR/hooks/log-usage.sh"
 chmod +x "$CLAUDE_DIR/bin/claude-hud-report"
+chmod +x "$CLAUDE_DIR/bin/claude-hud-share"
 
 echo "  Copied statusline.sh       → $CLAUDE_DIR/statusline.sh"
 echo "  Copied log-usage.sh        → $CLAUDE_DIR/hooks/log-usage.sh"
 echo "  Copied claude-hud-report   → $CLAUDE_DIR/bin/claude-hud-report"
+echo "  Copied claude-hud-share    → $CLAUDE_DIR/bin/claude-hud-share"
 
 # ── Patch settings.json ───────────────────────────────────────────────────────
 statusline_cmd="$CLAUDE_DIR/statusline.sh"
