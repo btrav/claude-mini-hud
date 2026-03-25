@@ -55,15 +55,17 @@ jq \
         "command": $sl_cmd
       }
     } |
-    .hooks.Stop = (
-      (.hooks.Stop // []) +
-      [{
-        "hooks": [{
-          "type": "command",
-          "command": $hook_cmd
+    if ([.hooks.Stop // [] | .[] | .hooks // [] | .[] | select(.command == $hook_cmd)] | length) == 0 then
+      .hooks.Stop = (
+        (.hooks.Stop // []) +
+        [{
+          "hooks": [{
+            "type": "command",
+            "command": $hook_cmd
+          }]
         }]
-      }]
-    )
+      )
+    else . end
   ' \
   "$SETTINGS" > "${SETTINGS}.tmp" && mv "${SETTINGS}.tmp" "$SETTINGS"
 
