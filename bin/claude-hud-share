@@ -27,9 +27,9 @@ copy_mode=0
 # ── ANSI (suppressed in copy mode) ───────────────────────────────────────────
 if (( copy_mode == 0 )); then
   GREEN='\033[32m'; AMBER='\033[33m'; RED='\033[31m'
-  DIM='\033[2m'; BOLD='\033[1m'; RESET='\033[0m'
+  DIM='\033[2m'; RESET='\033[0m'
 else
-  GREEN=''; AMBER=''; RED=''; DIM=''; BOLD=''; RESET=''
+  GREEN=''; AMBER=''; RED=''; DIM=''; RESET=''
 fi
 
 # ── Build context bar (plain, no ANSI — card uses plain chars) ───────────────
@@ -68,7 +68,7 @@ _row() {
 # ── Render ────────────────────────────────────────────────────────────────────
 card=""
 card+="┌${sep}┐\n"
-card+="│  ${BOLD}✦CC✦  claude-mini-hud${RESET}$(printf '%*s' $((W-21)) '')│\n"
+card+="$(_row "✦CC✦  claude-mini-hud")\n"
 card+="├${sep}┤\n"
 
 # ctx row — pad manually since bar is plain text here
