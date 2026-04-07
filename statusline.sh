@@ -8,7 +8,7 @@ input=$(cat 2>/dev/null)
 echo "$input" | jq -e . >/dev/null 2>&1 || exit 0
 
 # ── Theme ────────────────────────────────────────────────────────────────────
-# Set CLAUDE_HUD_THEME in your shell: default | synthwave | ghost | matrix | blueprint
+# Set CLAUDE_HUD_THEME in your shell: default | synthwave | ghost | matrix | blueprint | vaporwave | lava-lamp
 case "${CLAUDE_HUD_THEME:-default}" in
   synthwave)
     C_LOW='\033[35m'; C_MID='\033[36m'; C_HIGH='\033[38;5;201m' ;;
@@ -18,6 +18,10 @@ case "${CLAUDE_HUD_THEME:-default}" in
     C_LOW='\033[92m'; C_MID='\033[32m'; C_HIGH='\033[2;32m' ;;
   blueprint)
     C_LOW='\033[94m'; C_MID='\033[34m'; C_HIGH='\033[2;34m' ;;
+  vaporwave)
+    C_LOW='\033[38;5;201m'; C_MID='\033[38;5;183m'; C_HIGH='\033[38;5;51m' ;;
+  lava-lamp)
+    C_LOW='\033[35m'; C_MID='\033[32m'; C_HIGH='\033[35m' ;;
   *)
     C_LOW='\033[32m'; C_MID='\033[33m'; C_HIGH='\033[31m' ;;
 esac
@@ -58,9 +62,12 @@ fi
 # Segments 1-6: C_LOW, 7-8: C_MID, 9-10: C_HIGH
 ctx_filled=$(( ctx_pct * 10 / 100 ))
 ctx_bar=""
+THEME="${CLAUDE_HUD_THEME:-default}"
 for (( i=1; i<=10; i++ )); do
   if (( i <= ctx_filled )); then
-    if   (( i <= 6 )); then ctx_bar+="${C_LOW}▓${C_RESET}"
+    if [[ "$THEME" == "lava-lamp" ]]; then
+      (( i % 2 == 1 )) && ctx_bar+="${C_LOW}▓${C_RESET}" || ctx_bar+="${C_MID}▓${C_RESET}"
+    elif (( i <= 6 )); then ctx_bar+="${C_LOW}▓${C_RESET}"
     elif (( i <= 8 )); then ctx_bar+="${C_MID}▓${C_RESET}"
     else                    ctx_bar+="${C_HIGH}▓${C_RESET}"
     fi

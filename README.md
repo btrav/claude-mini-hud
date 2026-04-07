@@ -85,9 +85,15 @@ export CLAUDE_HUD_THEME=synthwave   # add to ~/.zshrc
 
   blueprint  bright blue → blue → dim blue
   ✦CC✦  ▓▓▓▓▓▓░░░░  61%  ·  ▮▮▮▮▯  ·  23m  ·  ♨5d
+
+  vaporwave  hot-pink → lavender → cyan
+  ✦CC✦  ▓▓▓▓▓▓░░░░  61%  ·  ▮▮▮▮▯  ·  23m  ·  ♨5d
+
+  lava-lamp  alternating magenta/green segments
+  ✦CC✦  ▓▓▓▓▓▓░░░░  61%  ·  ▮▮▮▮▯  ·  23m  ·  ♨5d
 ```
 
-> `synthwave` uses 256-color mode — requires a terminal with 256-color support.
+> `synthwave` and `vaporwave` use 256-color mode — requires a terminal with 256-color support.
 
 ---
 
