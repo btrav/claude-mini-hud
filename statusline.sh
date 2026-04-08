@@ -77,7 +77,9 @@ for (( i=1; i<=10; i++ )); do
 done
 
 # Percentage label color matches cascade frontier
-if   (( ctx_pct >= 90 )); then ctx_num_color="$C_HIGH"
+if [[ "$THEME" == "lava-lamp" ]]; then
+  ctx_num_color="$C_LOW"
+elif (( ctx_pct >= 90 )); then ctx_num_color="$C_HIGH"
 elif (( ctx_pct >= 70 )); then ctx_num_color="$C_MID"
 else                           ctx_num_color="$C_LOW"
 fi
@@ -90,7 +92,9 @@ for (( i=1; i<=5; i++ )); do
   (( i <= battery_filled )) && battery+="▮" || battery+="▯"
 done
 
-if   (( rate_remaining <= 5  )); then bat_color="$C_HIGH"
+if [[ "$THEME" == "lava-lamp" ]]; then
+  bat_color="$C_MID"
+elif (( rate_remaining <= 5  )); then bat_color="$C_HIGH"
 elif (( rate_remaining <= 20 )); then bat_color="$C_MID"
 else                                  bat_color="$C_LOW"
 fi
@@ -124,7 +128,11 @@ fi
 # ── Lines changed (only shown when non-zero) ─────────────────────────────────
 diff_str=""
 if (( lines_added > 0 || lines_removed > 0 )); then
-  diff_str=" ${C_DIM}·${C_RESET} ${C_LOW}+${lines_added}${C_RESET} ${C_HIGH}-${lines_removed}${C_RESET}"
+  if [[ "$THEME" == "lava-lamp" ]]; then
+    diff_str=" ${C_DIM}·${C_RESET} ${C_MID}+${lines_added}${C_RESET} ${C_LOW}-${lines_removed}${C_RESET}"
+  else
+    diff_str=" ${C_DIM}·${C_RESET} ${C_LOW}+${lines_added}${C_RESET} ${C_HIGH}-${lines_removed}${C_RESET}"
+  fi
 fi
 
 # ── Streak counter ────────────────────────────────────────────────────────────
@@ -149,7 +157,11 @@ else
 fi
 
 streak_str=""
-(( s_count > 1 )) && streak_str=" ${C_DIM}·${C_RESET} ${C_LOW}♨${s_count}d${C_RESET}"
+if [[ "$THEME" == "lava-lamp" ]]; then
+  (( s_count > 1 )) && streak_str=" ${C_DIM}·${C_RESET} ${C_MID}♨${s_count}d${C_RESET}"
+else
+  (( s_count > 1 )) && streak_str=" ${C_DIM}·${C_RESET} ${C_LOW}♨${s_count}d${C_RESET}"
+fi
 
 # ── Cache state for claude-hud-share ─────────────────────────────────────────
 printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
