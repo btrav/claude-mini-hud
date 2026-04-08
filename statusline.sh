@@ -86,7 +86,13 @@ fi
 printf -v ctx_pct_str '%3d%%' "$ctx_pct"
 
 # ── Session rate limit battery (5 segments, drains) ──────────────────────────
-battery_filled=$(( rate_remaining * 5 / 100 ))
+if   (( rate_remaining >= 85 )); then battery_filled=5
+elif (( rate_remaining >= 65 )); then battery_filled=4
+elif (( rate_remaining >= 45 )); then battery_filled=3
+elif (( rate_remaining >= 25 )); then battery_filled=2
+elif (( rate_remaining >= 11 )); then battery_filled=1
+else                                  battery_filled=0
+fi
 battery=""
 for (( i=1; i<=5; i++ )); do
   (( i <= battery_filled )) && battery+="▮" || battery+="▯"
@@ -94,14 +100,14 @@ done
 
 if [[ "$THEME" == "lava-lamp" ]]; then
   bat_color="$C_MID"
-elif (( rate_remaining <= 5  )); then bat_color="$C_HIGH"
-elif (( rate_remaining <= 20 )); then bat_color="$C_MID"
+elif (( rate_remaining <= 10 )); then bat_color="$C_HIGH"
+elif (( rate_remaining <= 24 )); then bat_color="$C_MID"
 else                                  bat_color="$C_LOW"
 fi
 
 # Show ETA when amber/red, fall back to remaining % if resets_at unavailable
 bat_pct_str=""
-if (( rate_remaining <= 20 )); then
+if (( rate_remaining <= 24 )); then
   if (( rate_resets_at > 0 )); then
     secs_left=$(( rate_resets_at - now ))
     if (( secs_left > 0 )); then
