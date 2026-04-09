@@ -14,7 +14,7 @@ if [[ ! -f "$STATE_FILE" ]]; then
   exit 0
 fi
 
-IFS=$'\t' read -r ctx_pct rate_remaining duration_ms lines_added lines_removed streak ts model < "$STATE_FILE"
+IFS=$'\t' read -r ctx_pct rate_remaining duration_ms lines_added lines_removed streak ts model compact_count < "$STATE_FILE"
 
 ctx_pct=${ctx_pct:-0}; rate_remaining=${rate_remaining:-0}
 duration_ms=${duration_ms:-0}; lines_added=${lines_added:-0}
