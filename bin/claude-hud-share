@@ -2,8 +2,9 @@
 # claude-mini-hud share
 # Prints an ASCII session card — screenshot it and share
 #
-# Usage: claude-hud-share [--copy]
-#   --copy   Copy plain-text card to clipboard (macOS: pbcopy, Linux: xclip)
+# Usage: claude-hud-share [--copy|--markdown]
+#   --copy      Copy plain-text card to clipboard (macOS: pbcopy, Linux: xclip)
+#   --markdown  Output a markdown-formatted card for social posting
 
 STATE_FILE="$HOME/.claude/hud-state.tsv"
 
@@ -21,11 +22,14 @@ lines_removed=${lines_removed:-0}; streak=${streak:-1}
 model=${model:-"claude"}
 
 # ── Flag parsing ──────────────────────────────────────────────────────────────
-copy_mode=0
-[[ "${1:-}" == "--copy" ]] && copy_mode=1
+mode="display"
+case "${1:-}" in
+  --copy)     mode="copy" ;;
+  --markdown) mode="markdown" ;;
+esac
 
 # ── ANSI (suppressed in copy mode) ───────────────────────────────────────────
-if (( copy_mode == 0 )); then
+if [[ "$mode" == "display" ]]; then
   GREEN='\033[32m'; AMBER='\033[33m'; RED='\033[31m'
   DIM='\033[2m'; RESET='\033[0m'
 else
@@ -88,22 +92,34 @@ card+="$(_row "github.com/btrav/claude-mini-hud")\n"
 card+="└${sep}┘\n"
 
 # ── Output ────────────────────────────────────────────────────────────────────
-if (( copy_mode == 1 )); then
-  # Strip any remaining escape codes and copy
-  plain=$(printf '%b' "$card" | sed 's/\x1b\[[0-9;]*m//g')
-  if command -v pbcopy &>/dev/null; then
-    printf '%s' "$plain" | pbcopy
-    echo "Copied to clipboard."
-  elif command -v xclip &>/dev/null; then
-    printf '%s' "$plain" | xclip -selection clipboard
-    echo "Copied to clipboard."
-  else
-    printf '%b\n' "$card"
-    echo "(No clipboard tool found — printed above)"
-  fi
-else
-  printf '\n'
-  printf '%b' "$card"
-  printf '\n'
-  echo "  Tip: claude-hud-share --copy to copy to clipboard"
-fi
+case "$mode" in
+  markdown)
+    md="**✦CC✦ claude-mini-hud**\n\n"
+    md+="\`${bar}\` ${ctx_pct}% context\n"
+    md+="⏱ ${dur}"
+    (( show_lines )) && md+=" · +${lines_added} -${lines_removed}"
+    (( show_streak )) && md+=" · ♨ ${streak}d streak"
+    md+="\n${model}\n\n"
+    md+="github.com/btrav/claude-mini-hud"
+    printf '%b\n' "$md"
+    ;;
+  copy)
+    plain=$(printf '%b' "$card" | sed 's/\x1b\[[0-9;]*m//g')
+    if command -v pbcopy &>/dev/null; then
+      printf '%s' "$plain" | pbcopy
+      echo "Copied to clipboard."
+    elif command -v xclip &>/dev/null; then
+      printf '%s' "$plain" | xclip -selection clipboard
+      echo "Copied to clipboard."
+    else
+      printf '%b\n' "$card"
+      echo "(No clipboard tool found — printed above)"
+    fi
+    ;;
+  *)
+    printf '\n'
+    printf '%b' "$card"
+    printf '\n'
+    echo "  Tip: claude-hud-share --copy | --markdown"
+    ;;
+esac

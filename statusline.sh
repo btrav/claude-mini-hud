@@ -25,6 +25,10 @@ case "${CLAUDE_HUD_THEME:-default}" in
   *)
     C_LOW='\033[32m'; C_MID='\033[33m'; C_HIGH='\033[31m' ;;
 esac
+# Custom color overrides (e.g. CLAUDE_HUD_C_LOW='\033[95m')
+[[ -n "${CLAUDE_HUD_C_LOW:-}"  ]] && C_LOW="$CLAUDE_HUD_C_LOW"
+[[ -n "${CLAUDE_HUD_C_MID:-}"  ]] && C_MID="$CLAUDE_HUD_C_MID"
+[[ -n "${CLAUDE_HUD_C_HIGH:-}" ]] && C_HIGH="$CLAUDE_HUD_C_HIGH"
 C_DIM='\033[2m'
 C_RESET='\033[0m'
 
@@ -169,13 +173,47 @@ else
   (( s_count > 1 )) && streak_str=" ${C_DIM}·${C_RESET} ${C_LOW}♨${s_count}d${C_RESET}"
 fi
 
+# ── Compaction counter ────────────────────────────────────────────────────────
+COMPACT_FILE="$HOME/.claude/hud-compact"
+compact_count=0
+if [[ -f "$COMPACT_FILE" ]]; then
+  read -r prev_ctx prev_count < "$COMPACT_FILE" 2>/dev/null
+  prev_ctx=${prev_ctx:-0}; prev_count=${prev_count:-0}
+  compact_count=$prev_count
+  # Detect compaction: ctx_pct dropped by 30+ points from previous reading
+  if (( prev_ctx - ctx_pct >= 30 && prev_ctx > 0 )); then
+    compact_count=$(( prev_count + 1 ))
+  fi
+fi
+printf '%s %d\n' "$ctx_pct" "$compact_count" > "$COMPACT_FILE" 2>/dev/null
+
+compact_str=""
+(( compact_count > 0 )) && compact_str=" ${C_DIM}·${C_RESET} ${C_DIM}⟳${compact_count}${C_RESET}"
+
 # ── Cache state for claude-hud-share ─────────────────────────────────────────
-printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
   "$ctx_pct" "$rate_remaining" "$duration_ms" \
   "$lines_added" "$lines_removed" "$s_count" \
-  "$now" "${model_name}" \
+  "$now" "${model_name}" "$compact_count" \
   > "$HOME/.claude/hud-state.tsv" 2>/dev/null
 
+# ── Rate limit notification ──────────────────────────────────────────────────
+# Fires once per threshold crossing. Set CLAUDE_HUD_NOTIFY=0 to disable.
+if [[ "${CLAUDE_HUD_NOTIFY:-1}" == "1" ]]; then
+  NOTIFY_FILE="$HOME/.claude/hud-notify-state"
+  notify_threshold=${CLAUDE_HUD_NOTIFY_PCT:-10}
+  notified_already=0
+  [[ -f "$NOTIFY_FILE" ]] && read -r notified_already < "$NOTIFY_FILE" 2>/dev/null
+  if (( rate_remaining <= notify_threshold && notified_already == 0 )); then
+    echo 1 > "$NOTIFY_FILE" 2>/dev/null
+    if [[ "$(uname)" == "Darwin" ]]; then
+      osascript -e "display notification \"Rate limit at ${rate_remaining}%${bat_pct_str:+ — resets${bat_pct_str}}\" with title \"✦CC✦ claude-mini-hud\"" 2>/dev/null &
+    fi
+  elif (( rate_remaining > notify_threshold && notified_already == 1 )); then
+    echo 0 > "$NOTIFY_FILE" 2>/dev/null
+  fi
+fi
+
 # ── Output ────────────────────────────────────────────────────────────────────
-out="${callsign_str} ${ctx_bar} ${ctx_num_color}${ctx_pct_str}${C_RESET} ${C_DIM}·${C_RESET} ${bat_color}${battery}${bat_pct_str}${C_RESET} ${C_DIM}·${C_RESET} ${C_DIM}${duration_str}${C_RESET}${diff_str}${streak_str}"
+out="${callsign_str} ${ctx_bar} ${ctx_num_color}${ctx_pct_str}${C_RESET} ${C_DIM}·${C_RESET} ${bat_color}${battery}${bat_pct_str}${C_RESET} ${C_DIM}·${C_RESET} ${C_DIM}${duration_str}${C_RESET}${diff_str}${streak_str}${compact_str}"
 printf '%b\n' "$out"

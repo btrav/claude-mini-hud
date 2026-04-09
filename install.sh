@@ -8,7 +8,8 @@ CLAUDE_DIR="$HOME/.claude"
 SETTINGS="$CLAUDE_DIR/settings.json"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-echo "Installing claude-mini-hud..."
+VERSION=$(cat "$SCRIPT_DIR/VERSION" 2>/dev/null || echo "unknown")
+echo "Installing claude-mini-hud v${VERSION}..."
 
 # ── Check dependencies ────────────────────────────────────────────────────────
 if ! command -v jq &>/dev/null; then

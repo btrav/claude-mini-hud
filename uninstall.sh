@@ -21,7 +21,11 @@ files=(
   "$CLAUDE_DIR/statusline.sh"
   "$CLAUDE_DIR/hooks/log-usage.sh"
   "$CLAUDE_DIR/bin/claude-hud-report"
+  "$CLAUDE_DIR/bin/claude-hud-share"
   "$CLAUDE_DIR/hud-streak"
+  "$CLAUDE_DIR/hud-state.tsv"
+  "$CLAUDE_DIR/hud-compact"
+  "$CLAUDE_DIR/hud-notify-state"
 )
 for f in "${files[@]}"; do
   if [[ -f "$f" ]]; then
