@@ -8,8 +8,9 @@ input=$(cat 2>/dev/null)
 echo "$input" | jq -e . >/dev/null 2>&1 || exit 0
 
 # ── Theme ────────────────────────────────────────────────────────────────────
-# Set CLAUDE_HUD_THEME in your shell: default | synthwave | ghost | matrix | blueprint | vaporwave | lava-lamp
-case "${CLAUDE_HUD_THEME:-default}" in
+# Set CLAUDE_HUD_THEME: default | synthwave | ghost | matrix | blueprint | vaporwave | lava-lamp
+THEME="${CLAUDE_HUD_THEME:-default}"
+case "$THEME" in
   synthwave)
     C_LOW='\033[35m'; C_MID='\033[36m'; C_HIGH='\033[38;5;201m' ;;
   ghost)
@@ -31,6 +32,9 @@ esac
 [[ -n "${CLAUDE_HUD_C_HIGH:-}" ]] && C_HIGH="$CLAUDE_HUD_C_HIGH"
 C_DIM='\033[2m'
 C_RESET='\033[0m'
+
+# Lava-lamp bypasses the standard cascade: bar alternates, other elements use fixed colors
+LAVA=0; [[ "$THEME" == "lava-lamp" ]] && LAVA=1
 
 # ── Extract all values in a single jq call ───────────────────────────────────
 IFS=$'\t' read -r ctx_pct rate_used duration_ms lines_added lines_removed rate_resets_at model_name <<< "$(
@@ -66,11 +70,9 @@ fi
 # Segments 1-6: C_LOW, 7-8: C_MID, 9-10: C_HIGH
 ctx_filled=$(( ctx_pct * 10 / 100 ))
 ctx_bar=""
-THEME="${CLAUDE_HUD_THEME:-default}"
 for (( i=1; i<=10; i++ )); do
   if (( i <= ctx_filled )); then
-    if [[ "$THEME" == "lava-lamp" ]]; then
-      (( i % 2 == 1 )) && ctx_bar+="${C_LOW}▓${C_RESET}" || ctx_bar+="${C_MID}▓${C_RESET}"
+    if   (( LAVA ));      then (( i % 2 == 1 )) && ctx_bar+="${C_LOW}▓${C_RESET}" || ctx_bar+="${C_MID}▓${C_RESET}"
     elif (( i <= 6 )); then ctx_bar+="${C_LOW}▓${C_RESET}"
     elif (( i <= 8 )); then ctx_bar+="${C_MID}▓${C_RESET}"
     else                    ctx_bar+="${C_HIGH}▓${C_RESET}"
@@ -81,8 +83,7 @@ for (( i=1; i<=10; i++ )); do
 done
 
 # Percentage label color matches cascade frontier
-if [[ "$THEME" == "lava-lamp" ]]; then
-  ctx_num_color="$C_LOW"
+if   (( LAVA ));               then ctx_num_color="$C_LOW"
 elif (( ctx_pct >= 90 )); then ctx_num_color="$C_HIGH"
 elif (( ctx_pct >= 70 )); then ctx_num_color="$C_MID"
 else                           ctx_num_color="$C_LOW"
@@ -102,8 +103,7 @@ for (( i=1; i<=5; i++ )); do
   (( i <= battery_filled )) && battery+="▮" || battery+="▯"
 done
 
-if [[ "$THEME" == "lava-lamp" ]]; then
-  bat_color="$C_MID"
+if   (( LAVA )); then                 bat_color="$C_MID"
 elif (( rate_remaining <= 10 )); then bat_color="$C_HIGH"
 elif (( rate_remaining <= 24 )); then bat_color="$C_MID"
 else                                  bat_color="$C_LOW"
@@ -138,7 +138,7 @@ fi
 # ── Lines changed (only shown when non-zero) ─────────────────────────────────
 diff_str=""
 if (( lines_added > 0 || lines_removed > 0 )); then
-  if [[ "$THEME" == "lava-lamp" ]]; then
+  if (( LAVA )); then
     diff_str=" ${C_DIM}·${C_RESET} ${C_MID}+${lines_added}${C_RESET} ${C_LOW}-${lines_removed}${C_RESET}"
   else
     diff_str=" ${C_DIM}·${C_RESET} ${C_LOW}+${lines_added}${C_RESET} ${C_HIGH}-${lines_removed}${C_RESET}"
@@ -166,12 +166,10 @@ else
   printf '%s 1\n' "$today" > "$STREAK_FILE"
 fi
 
+streak_color=$C_LOW
+(( LAVA )) && streak_color=$C_MID
 streak_str=""
-if [[ "$THEME" == "lava-lamp" ]]; then
-  (( s_count > 1 )) && streak_str=" ${C_DIM}·${C_RESET} ${C_MID}♨${s_count}d${C_RESET}"
-else
-  (( s_count > 1 )) && streak_str=" ${C_DIM}·${C_RESET} ${C_LOW}♨${s_count}d${C_RESET}"
-fi
+(( s_count > 1 )) && streak_str=" ${C_DIM}·${C_RESET} ${streak_color}♨${s_count}d${C_RESET}"
 
 # ── Compaction counter ────────────────────────────────────────────────────────
 COMPACT_FILE="$HOME/.claude/hud-compact"
@@ -207,7 +205,7 @@ if [[ "${CLAUDE_HUD_NOTIFY:-1}" == "1" ]]; then
   if (( rate_remaining <= notify_threshold && notified_already == 0 )); then
     echo 1 > "$NOTIFY_FILE" 2>/dev/null
     if [[ "$(uname)" == "Darwin" ]]; then
-      osascript -e "display notification \"Rate limit at ${rate_remaining}%${bat_pct_str:+ — resets${bat_pct_str}}\" with title \"✦CC✦ claude-mini-hud\"" 2>/dev/null &
+      osascript -e "display notification \"Rate limit at ${rate_remaining}%${bat_pct_str:+, resets${bat_pct_str}}\" with title \"✦CC✦ claude-mini-hud\"" 2>/dev/null &
     fi
   elif (( rate_remaining > notify_threshold && notified_already == 1 )); then
     echo 0 > "$NOTIFY_FILE" 2>/dev/null

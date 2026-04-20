@@ -8,15 +8,16 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 STATUS="$SCRIPT_DIR/statusline.sh"
 PASS=0; FAIL=0
 
-# Disable notifications in tests
+# Isolate tests from the real ~/.claude directory
+TEST_HOME=$(mktemp -d)
+mkdir -p "$TEST_HOME/.claude"
+export HOME="$TEST_HOME"
 export CLAUDE_HUD_NOTIFY=0
 
-# Clean up temp state files so they don't interfere
 cleanup() {
-  rm -f "$HOME/.claude/hud-compact" "$HOME/.claude/hud-notify-state"
+  rm -rf "$TEST_HOME"
 }
 trap cleanup EXIT
-cleanup
 
 assert_contains() {
   local label="$1" output="$2" expected="$3"
@@ -27,7 +28,7 @@ assert_contains() {
     echo "  PASS  $label"
     PASS=$(( PASS + 1 ))
   else
-    echo "  FAIL  $label — expected '$expected' in: $plain"
+    echo "  FAIL  $label: expected '$expected' in: $plain"
     FAIL=$(( FAIL + 1 ))
   fi
 }
@@ -40,14 +41,14 @@ assert_not_contains() {
     echo "  PASS  $label"
     PASS=$(( PASS + 1 ))
   else
-    echo "  FAIL  $label — unexpected '$unexpected' in: $plain"
+    echo "  FAIL  $label: unexpected '$unexpected' in: $plain"
     FAIL=$(( FAIL + 1 ))
   fi
 }
 
 run_status() {
-  # Reset compact state before each run to avoid cross-test interference
-  rm -f "$HOME/.claude/hud-compact"
+  # Reset compact/streak state before each run to avoid cross-test interference
+  rm -f "$HOME/.claude/hud-compact" "$HOME/.claude/hud-streak"
   echo "$1" | CLAUDE_HUD_THEME="${2:-default}" bash "$STATUS" 2>/dev/null
 }
 

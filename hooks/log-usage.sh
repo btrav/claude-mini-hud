@@ -24,7 +24,7 @@ session_id=$(jq -r '.session_id // ""' <<< "$input" 2>/dev/null)
 transcript=$(jq -r '.transcript_path // ""' <<< "$input" 2>/dev/null)
 
 # ── Parse token data from transcript ─────────────────────────────────────────
-# The Stop hook doesn't carry cost/context data — read it from the transcript file
+# The Stop hook doesn't carry cost/context data. Parse it from the transcript file.
 tokens_in=0; tokens_out=0; model=""
 
 if [[ -n "$transcript" && -f "$transcript" ]]; then

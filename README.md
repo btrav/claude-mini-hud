@@ -21,7 +21,7 @@
 └──────────────────────────────────────────────────────────────────┘
 ```
 
-A live HUD for [Claude Code](https://claude.ai/code) that shows context window fill, rate limit battery, session time, lines changed, and streak — in Claude Code's native status bar. No extra panes. No config files to learn. One install.
+A live HUD for [Claude Code](https://claude.ai/code) that shows context window fill, rate limit battery, session time, lines changed, streak, and compaction count. Renders in Claude Code's native status bar. No extra panes. No config files to learn. One install.
 
 ---
 
@@ -44,16 +44,22 @@ Start a new Claude Code session. Done.
 ## what you're looking at
 
 ```
-  ✦CC✦  ▓▓▓▓▓▓░░░░  61%  ·  ▮▮▮▮▯  ·  23m  ·  +142 -38  ·  ♨5d
-  ────  ─────────────────  ─────────  ─────  ───────────  ────
-  state    context bar       battery   time    code diff   streak
+  ✦CC✦  ▓▓▓▓▓▓░░░░  61%  ·  ▮▮▮▮▯  ·  23m  ·  +142 -38  ·  ♨5d  ·  ⟳2
+  ────  ─────────────────  ─────────  ─────  ───────────  ────     ──
+  state    context bar       battery   time    code diff   streak  compacts
 ```
 
-**Context bar** — fills as the conversation grows. Green → amber → red as Claude's working memory gets tight. When it maxes out, Claude Code compacts. Use `/compact` to control it manually.
+**Context bar.** Fills as the conversation grows. Green, then amber, then red as Claude's working memory gets tight. When it maxes out, Claude Code compacts. Use `/compact` to control it manually.
 
-**Battery** — your 5-hour rate limit window. Drains over time, goes amber at 20% remaining and red at 5%. Shows time until reset when low (`~1h 20m`).
+**Battery.** Your 5-hour rate limit window. Drains over time. Goes amber at 24% remaining, red at 10%. Shows time until reset when low (`~1h 20m`).
 
-**Callsign** — reads session state at a glance:
+**Code diff.** Lines added and removed in the current working directory since the session started.
+
+**Streak.** Days in a row you've used Claude Code. Resets if you skip a day.
+
+**Compaction counter.** Shows `⟳N` when Claude Code has auto-compacted the conversation to free up context. Useful signal for prompting style.
+
+**Callsign.** Reads session state at a glance:
 
 ```
   normal              warning             critical
@@ -71,29 +77,26 @@ export CLAUDE_HUD_THEME=synthwave   # add to ~/.zshrc
 ```
 
 ```
-  default    green → amber → red
-  ✦CC✦  ▓▓▓▓▓▓░░░░  61%  ·  ▮▮▮▮▯  ·  23m  ·  ♨5d
-
-  synthwave  magenta → cyan → hot-pink
-  ✦CC✦  ▓▓▓▓▓▓░░░░  61%  ·  ▮▮▮▮▯  ·  23m  ·  ♨5d
-
+  default    green, amber, red cascade
+  synthwave  magenta, cyan, hot-pink
   ghost      all dim white/grey
-  ✦CC✦  ▓▓▓▓▓▓░░░░  61%  ·  ▮▮▮▮▯  ·  23m  ·  ♨5d
-
-  matrix     bright green → green → dim green
-  ✦CC✦  ▓▓▓▓▓▓░░░░  61%  ·  ▮▮▮▮▯  ·  23m  ·  ♨5d
-
-  blueprint  bright blue → blue → dim blue
-  ✦CC✦  ▓▓▓▓▓▓░░░░  61%  ·  ▮▮▮▮▯  ·  23m  ·  ♨5d
-
-  vaporwave  hot-pink → lavender → cyan
-  ✦CC✦  ▓▓▓▓▓▓░░░░  61%  ·  ▮▮▮▮▯  ·  23m  ·  ♨5d
-
+  matrix     bright green, green, dim green
+  blueprint  bright blue, blue, dim blue
+  vaporwave  hot-pink, lavender, cyan
   lava-lamp  alternating magenta/green segments
-  ✦CC✦  ▓▓▓▓▓▓░░░░  61%  ·  ▮▮▮▮▯  ·  23m  ·  ♨5d
 ```
 
-> `synthwave` and `vaporwave` use 256-color mode — requires a terminal with 256-color support.
+### Custom colors
+
+Override any theme's colors with ANSI escape codes:
+
+```bash
+export CLAUDE_HUD_C_LOW='\033[95m'
+export CLAUDE_HUD_C_MID='\033[93m'
+export CLAUDE_HUD_C_HIGH='\033[91m'
+```
+
+> `synthwave` and `vaporwave` use 256-color mode. Requires a terminal with 256-color support.
 
 ---
 
@@ -119,7 +122,18 @@ claude-hud-share
   └──────────────────────────────────┘
 ```
 
-`claude-hud-share --copy` copies plain-text to clipboard. Screenshot and post it.
+`claude-hud-share --copy` copies plain-text to clipboard. `claude-hud-share --markdown` outputs a formatted block for Twitter, LinkedIn, or Slack.
+
+---
+
+## notifications
+
+Get a macOS notification when your rate limit drops below a threshold:
+
+```bash
+export CLAUDE_HUD_NOTIFY_PCT=15   # default is 10
+export CLAUDE_HUD_NOTIFY=0        # disable entirely
+```
 
 ---
 
@@ -154,7 +168,7 @@ The status line runs after every Claude response, not during. It reads a JSON pa
 ## requirements
 
 - [Claude Code](https://claude.ai/code)
-- [jq](https://jqlang.github.io/jq/) — `brew install jq`
+- [jq](https://jqlang.github.io/jq/) (`brew install jq`)
 - bash
 
 ---
@@ -199,7 +213,7 @@ export CLAUDE_HUD_DEBUG=1
 
 Raw Stop hook data appends to `~/.claude/hud-debug.jsonl`. Inspect with `cat ~/.claude/hud-debug.jsonl | jq .`
 
-> The Claude Code Stop hook doesn't carry cost or context data — only session metadata. Token counts are parsed from the session transcript. Fields like `cost_usd` and `lines_added` are null in the log for this reason.
+> The Claude Code Stop hook doesn't carry cost or context data, only session metadata. Token counts are parsed from the session transcript. Fields like `cost_usd` and `lines_added` are null in the log for this reason.
 
 ---
 

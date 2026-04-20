@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # claude-mini-hud share
-# Prints an ASCII session card — screenshot it and share
+# Prints an ASCII session card. Screenshot it and share.
 #
 # Usage: claude-hud-share [--copy|--markdown]
 #   --copy      Copy plain-text card to clipboard (macOS: pbcopy, Linux: xclip)
@@ -28,15 +28,14 @@ case "${1:-}" in
   --markdown) mode="markdown" ;;
 esac
 
-# ── ANSI (suppressed in copy mode) ───────────────────────────────────────────
+# ── ANSI (suppressed in copy/markdown modes) ─────────────────────────────────
 if [[ "$mode" == "display" ]]; then
-  GREEN='\033[32m'; AMBER='\033[33m'; RED='\033[31m'
   DIM='\033[2m'; RESET='\033[0m'
 else
-  GREEN=''; AMBER=''; RED=''; DIM=''; RESET=''
+  DIM=''; RESET=''
 fi
 
-# ── Build context bar (plain, no ANSI — card uses plain chars) ───────────────
+# ── Build context bar (plain chars, no ANSI) ─────────────────────────────────
 ctx_filled=$(( ctx_pct * 10 / 100 ))
 bar=""
 for (( i=1; i<=10; i++ )); do
@@ -75,7 +74,7 @@ card+="┌${sep}┐\n"
 card+="$(_row "✦CC✦  claude-mini-hud")\n"
 card+="├${sep}┤\n"
 
-# ctx row — pad manually since bar is plain text here
+# ctx row: pad manually since bar is plain text here
 ctx_line="ctx   ${bar}  ${ctx_pct}%"
 card+="$(_row "$ctx_line")\n"
 card+="$(_row "time  ${dur}")\n"
@@ -113,7 +112,7 @@ case "$mode" in
       echo "Copied to clipboard."
     else
       printf '%b\n' "$card"
-      echo "(No clipboard tool found — printed above)"
+      echo "(No clipboard tool found. Printed above.)"
     fi
     ;;
   *)
