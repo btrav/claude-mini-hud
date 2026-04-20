@@ -172,18 +172,21 @@ streak_str=""
 (( s_count > 1 )) && streak_str=" ${C_DIM}·${C_RESET} ${streak_color}♨${s_count}d${C_RESET}"
 
 # ── Compaction counter ────────────────────────────────────────────────────────
+# Detects ctx_pct dropping 30+ points within an active session. Gaps longer
+# than 5 minutes are treated as a new session to avoid false triggers.
 COMPACT_FILE="$HOME/.claude/hud-compact"
 compact_count=0
 if [[ -f "$COMPACT_FILE" ]]; then
-  read -r prev_ctx prev_count < "$COMPACT_FILE" 2>/dev/null
-  prev_ctx=${prev_ctx:-0}; prev_count=${prev_count:-0}
-  compact_count=$prev_count
-  # Detect compaction: ctx_pct dropped by 30+ points from previous reading
-  if (( prev_ctx - ctx_pct >= 30 && prev_ctx > 0 )); then
-    compact_count=$(( prev_count + 1 ))
+  read -r prev_ctx prev_count prev_ts < "$COMPACT_FILE" 2>/dev/null
+  prev_ctx=${prev_ctx:-0}; prev_count=${prev_count:-0}; prev_ts=${prev_ts:-0}
+  if (( now - prev_ts < 300 )); then
+    compact_count=$prev_count
+    if (( prev_ctx - ctx_pct >= 30 && prev_ctx > 0 )); then
+      compact_count=$(( prev_count + 1 ))
+    fi
   fi
 fi
-printf '%s %d\n' "$ctx_pct" "$compact_count" > "$COMPACT_FILE" 2>/dev/null
+printf '%s %d %s\n' "$ctx_pct" "$compact_count" "$now" > "$COMPACT_FILE" 2>/dev/null
 
 compact_str=""
 (( compact_count > 0 )) && compact_str=" ${C_DIM}·${C_RESET} ${C_DIM}⟳${compact_count}${C_RESET}"

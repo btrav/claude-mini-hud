@@ -74,9 +74,14 @@ echo "  Patched $SETTINGS"
 
 # ── Add ~/.claude/bin to PATH hint ────────────────────────────────────────────
 if [[ ":$PATH:" != *":$CLAUDE_DIR/bin:"* ]]; then
+  case "${SHELL:-}" in
+    */zsh)  rc="~/.zshrc" ;;
+    */bash) rc="~/.bashrc" ;;
+    *)      rc="your shell's rc file" ;;
+  esac
   echo ""
   echo "  Tip: add claude-hud-report to your PATH:"
-  echo "    echo 'export PATH=\"\$HOME/.claude/bin:\$PATH\"' >> ~/.zshrc"
+  echo "    echo 'export PATH=\"\$HOME/.claude/bin:\$PATH\"' >> $rc"
 fi
 
 echo ""
