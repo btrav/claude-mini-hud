@@ -119,6 +119,41 @@ for theme in default synthwave ghost matrix blueprint vaporwave lava-lamp; do
   assert_contains "theme $theme renders" "$out" "50%"
 done
 
+# ── Test 9: State file includes session_id (10th col) ────────────────────────
+fixture='{"session_id":"abc-123","context_window":{"used_percentage":42},"rate_limits":{"five_hour":{"used_percentage":10}},"cost":{"total_duration_ms":300000},"model":{"display_name":"Claude"}}'
+run_status "$fixture" >/dev/null
+state=$(cat "$HOME/.claude/hud-state.tsv" 2>/dev/null)
+assert_contains "state file persists session_id" "$state" "abc-123"
+
+# ── Test 10: claude-hud-report aggregates per-session, not per-row ───────────
+# Simulates the real bug: Stop hook fires N times per session with cumulative
+# token counts. Summing all rows would over-count; max-per-session is correct.
+REPORT="$SCRIPT_DIR/bin/claude-hud-report"
+LOG="$HOME/.claude/usage-log.jsonl"
+now_ts=$(date +%s)
+
+# Session A: 3 cumulative rows, peaks at 1000 in / 500 out / 80% ctx / 10min
+# Session B: 2 cumulative rows, peaks at  400 in / 200 out / 50% ctx /  5min
+cat > "$LOG" <<EOF
+{"ts":$now_ts,"session_id":"A","tokens_in":300,"tokens_out":150,"ctx_pct":30,"duration_ms":120000,"model":"claude-opus-4-7"}
+{"ts":$now_ts,"session_id":"A","tokens_in":700,"tokens_out":350,"ctx_pct":60,"duration_ms":360000,"model":"claude-opus-4-7"}
+{"ts":$now_ts,"session_id":"A","tokens_in":1000,"tokens_out":500,"ctx_pct":80,"duration_ms":600000,"model":"claude-opus-4-7"}
+{"ts":$now_ts,"session_id":"B","tokens_in":200,"tokens_out":100,"ctx_pct":25,"duration_ms":120000,"model":"claude-sonnet-4-6"}
+{"ts":$now_ts,"session_id":"B","tokens_in":400,"tokens_out":200,"ctx_pct":50,"duration_ms":300000,"model":"claude-sonnet-4-6"}
+EOF
+
+out=$(bash "$REPORT" --today 2>/dev/null)
+# Correct totals: 2 sessions, 1400 in (1000+400), 700 out (500+200), peak 80%, 15m total
+assert_contains "report sessions count"    "$out" "Sessions:   2"
+assert_contains "report tokens in (max-then-sum)"  "$out" "Tokens in:  1400"
+assert_contains "report tokens out (max-then-sum)" "$out" "Tokens out: 700"
+assert_contains "report peak ctx"           "$out" "Peak ctx:   80%"
+assert_contains "report total time"         "$out" "Total time: 15m"
+# Negative check: naive row-sum would give 2600 for tokens_in (300+700+1000+200+400)
+assert_not_contains "report does not over-count tokens" "$out" "Tokens in:  2600"
+
+rm -f "$LOG"
+
 # ── Results ──────────────────────────────────────────────────────────────────
 echo ""
 echo "Results: ${PASS} passed, ${FAIL} failed"

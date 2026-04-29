@@ -44,12 +44,32 @@ tokens_in=${tokens_in:-0}
 tokens_out=${tokens_out:-0}
 model=${model:-""}
 
+# ── Pull ctx_pct, duration, and lines from statusline state ──────────────────
+# The Stop hook payload doesn't carry these, but the statusline writes them to
+# hud-state.tsv after every render. If the cached session_id matches this Stop
+# event, the cached values belong to this session.
+ctx_pct=0; duration_ms=0; lines_added=null; lines_removed=null
+STATE_FILE="$HOME/.claude/hud-state.tsv"
+if [[ -f "$STATE_FILE" && -n "$session_id" ]]; then
+  IFS=$'\t' read -r s_ctx _ s_dur s_la s_lr _ _ _ _ s_sid < "$STATE_FILE" 2>/dev/null
+  if [[ "${s_sid:-}" == "$session_id" ]]; then
+    ctx_pct=${s_ctx:-0}
+    duration_ms=${s_dur:-0}
+    lines_added=${s_la:-null}
+    lines_removed=${s_lr:-null}
+  fi
+fi
+
 # ── Append log record ─────────────────────────────────────────────────────────
 jq -nc \
   --argjson ts "$(date +%s)" \
   --arg session_id "$session_id" \
   --argjson tokens_in "${tokens_in}" \
   --argjson tokens_out "${tokens_out}" \
+  --argjson ctx_pct "${ctx_pct}" \
+  --argjson duration_ms "${duration_ms}" \
+  --argjson lines_added "${lines_added}" \
+  --argjson lines_removed "${lines_removed}" \
   --arg model "$model" \
   '{
     ts:            $ts,
@@ -57,10 +77,10 @@ jq -nc \
     tokens_in:     $tokens_in,
     tokens_out:    $tokens_out,
     cost_usd:      null,
-    lines_added:   null,
-    lines_removed: null,
-    ctx_pct:       0,
-    duration_ms:   0,
+    lines_added:   $lines_added,
+    lines_removed: $lines_removed,
+    ctx_pct:       $ctx_pct,
+    duration_ms:   $duration_ms,
     model:         $model
   }' >> "$LOG" 2>/dev/null
 

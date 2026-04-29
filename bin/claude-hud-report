@@ -46,32 +46,47 @@ BOLD='\033[1m'; DIM='\033[2m'; GREEN='\033[32m'; RESET='\033[0m'
 SEP="${DIM}─────────────────────────────${RESET}"
 
 # ── Aggregate ─────────────────────────────────────────────────────────────────
+# The Stop hook fires after every Claude response, not just once per session,
+# and writes cumulative tokens each time. Take per-session max before summing
+# so a 200-row session doesn't get counted 200x.
 result=$(
   jq -rcs \
     --argjson since "$since" \
     '
+      def fmt_dur(ms):
+        (ms / 60000 | floor) as $m |
+        if   $m <= 0  then "<1m"
+        elif $m >= 60 then "\($m/60|floor)h \($m%60)m"
+        else "\($m)m" end;
       map(select(.ts > $since)) |
       if length == 0 then
         "EMPTY"
       else
+        group_by(.session_id) |
+        map({
+          tokens_in:   (map(.tokens_in   // 0) | max),
+          tokens_out:  (map(.tokens_out  // 0) | max),
+          peak_ctx:    (map(.ctx_pct     // 0) | max),
+          duration_ms: (map(.duration_ms // 0) | max),
+          model:       ([.[] | .model // "" | select(. != "")] | last // "unknown")
+        }) |
         {
-          sessions:    (map(.session_id) | unique | length),
-          tokens_in:   (map(.tokens_in   // 0) | add // 0),
-          tokens_out:  (map(.tokens_out  // 0) | add // 0),
-          peak_ctx:    (map(.ctx_pct     // 0) | max  // 0),
-          avg_ctx:     ((map(.ctx_pct    // 0) | add  // 0) /
-                        (map(.ctx_pct   // 0) | map(select(. > 0)) | length | if . == 0 then 1 else . end)
-                        | floor),
-          models:      ([map(.model // "unknown") | .[] | select(. != "" and . != "unknown")]
+          sessions:    length,
+          tokens_in:   (map(.tokens_in)   | add),
+          tokens_out:  (map(.tokens_out)  | add),
+          peak_ctx:    (map(.peak_ctx)    | max),
+          total_ms:    (map(.duration_ms) | add),
+          models:      ([.[] | .model | select(. != "" and . != "unknown")]
                         | if length == 0 then ["unknown"] else . end
                         | group_by(.) | map("\(.[0]) (\(length))") | join(", "))
         } |
         [
-          .sessions    | tostring | "Sessions:   " + .,
-          .tokens_in   | tostring | "Tokens in:  " + .,
-          .tokens_out  | tostring | "Tokens out: " + .,
-          "Peak ctx:   " + (.peak_ctx | tostring) + "%",
-          "Models:     " + .models
+          "Sessions:   \(.sessions)",
+          "Tokens in:  \(.tokens_in)",
+          "Tokens out: \(.tokens_out)",
+          "Peak ctx:   \(.peak_ctx)%",
+          "Total time: \(fmt_dur(.total_ms))",
+          "Models:     \(.models)"
         ] | join("\n")
       end
     ' "$LOG" 2>/dev/null

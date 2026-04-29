@@ -37,7 +37,7 @@ C_RESET='\033[0m'
 LAVA=0; [[ "$THEME" == "lava-lamp" ]] && LAVA=1
 
 # ── Extract all values in a single jq call ───────────────────────────────────
-IFS=$'\t' read -r ctx_pct rate_used duration_ms lines_added lines_removed rate_resets_at model_name <<< "$(
+IFS=$'\t' read -r ctx_pct rate_used duration_ms lines_added lines_removed rate_resets_at model_name session_id <<< "$(
   echo "$input" | jq -r '[
     (.context_window.used_percentage        // 0 | floor),
     (.rate_limits.five_hour.used_percentage // 0 | floor),
@@ -45,12 +45,13 @@ IFS=$'\t' read -r ctx_pct rate_used duration_ms lines_added lines_removed rate_r
     (.cost.total_lines_added                // 0 | floor),
     (.cost.total_lines_removed              // 0 | floor),
     (.rate_limits.five_hour.resets_at       // 0 | if type == "number" then floor else 0 end),
-    (.model.display_name                    // "")
+    (.model.display_name                    // ""),
+    (.session_id                            // "")
   ] | @tsv' 2>/dev/null
 )"
 ctx_pct=${ctx_pct:-0}; rate_used=${rate_used:-0}; duration_ms=${duration_ms:-0}
 lines_added=${lines_added:-0}; lines_removed=${lines_removed:-0}
-rate_resets_at=${rate_resets_at:-0}
+rate_resets_at=${rate_resets_at:-0}; session_id=${session_id:-""}
 
 # ── Derived values ───────────────────────────────────────────────────────────
 rate_remaining=$(( 100 - rate_used ))
@@ -191,11 +192,11 @@ printf '%s %d %s\n' "$ctx_pct" "$compact_count" "$now" > "$COMPACT_FILE" 2>/dev/
 compact_str=""
 (( compact_count > 0 )) && compact_str=" ${C_DIM}·${C_RESET} ${C_DIM}⟳${compact_count}${C_RESET}"
 
-# ── Cache state for claude-hud-share ─────────────────────────────────────────
-printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+# ── Cache state for claude-hud-share and Stop hook ───────────────────────────
+printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
   "$ctx_pct" "$rate_remaining" "$duration_ms" \
   "$lines_added" "$lines_removed" "$s_count" \
-  "$now" "${model_name}" "$compact_count" \
+  "$now" "${model_name}" "$compact_count" "$session_id" \
   > "$HOME/.claude/hud-state.tsv" 2>/dev/null
 
 # ── Rate limit notification ──────────────────────────────────────────────────
