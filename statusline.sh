@@ -167,10 +167,8 @@ else
   printf '%s 1\n' "$today" > "$STREAK_FILE"
 fi
 
-streak_color=$C_LOW
-(( LAVA )) && streak_color=$C_MID
 streak_str=""
-(( s_count > 1 )) && streak_str=" ${C_DIM}·${C_RESET} ${streak_color}♨${s_count}d${C_RESET}"
+(( s_count > 1 )) && streak_str=" ${C_DIM}·${C_RESET} ${C_DIM}♨${s_count}d${C_RESET}"
 
 # ── Compaction counter ────────────────────────────────────────────────────────
 # Detects ctx_pct dropping 30+ points within an active session. Gaps longer
@@ -207,7 +205,7 @@ if [[ "${CLAUDE_HUD_MODEL:-1}" == "1" && -n "$model_name" ]]; then
   if   [[ "$model_name" =~ ([0-9]+\.[0-9]+) ]]; then model_ver="${BASH_REMATCH[1]}"
   elif [[ "$model_name" =~ ([0-9]+)          ]]; then model_ver="${BASH_REMATCH[1]}"
   fi
-  model_str=" ${C_DIM}·${C_RESET} ${C_LOW}${model_tier}${model_ver}${C_RESET}"
+  model_str=" ${C_DIM}·${C_RESET} ${C_DIM}${model_tier}${model_ver}${C_RESET}"
 fi
 
 # ── Cache state for claude-hud-share and Stop hook ───────────────────────────
