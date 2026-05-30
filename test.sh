@@ -119,6 +119,20 @@ for theme in default synthwave ghost matrix blueprint vaporwave lava-lamp; do
   assert_contains "theme $theme renders" "$out" "50%"
 done
 
+# ── Test 8b: Model tag abbreviation and toggle ───────────────────────────────
+fixture='{"context_window":{"used_percentage":50},"rate_limits":{"five_hour":{"used_percentage":20}},"cost":{"total_duration_ms":120000},"model":{"display_name":"Opus 4.8"}}'
+out=$(run_status "$fixture")
+assert_contains "model tag Opus 4.8 → O4.8" "$out" "O4.8"
+
+fixture='{"context_window":{"used_percentage":50},"rate_limits":{"five_hour":{"used_percentage":20}},"cost":{"total_duration_ms":120000},"model":{"display_name":"Sonnet 4.6"}}'
+out=$(run_status "$fixture")
+assert_contains "model tag Sonnet 4.6 → S4.6" "$out" "S4.6"
+
+# Toggle off
+rm -f "$HOME/.claude/hud-compact" "$HOME/.claude/hud-streak"
+out=$(echo "$fixture" | CLAUDE_HUD_MODEL=0 bash "$STATUS" 2>/dev/null)
+assert_not_contains "model tag hidden when CLAUDE_HUD_MODEL=0" "$out" "S4.6"
+
 # ── Test 9: State file includes session_id (10th col) ────────────────────────
 fixture='{"session_id":"abc-123","context_window":{"used_percentage":42},"rate_limits":{"five_hour":{"used_percentage":10}},"cost":{"total_duration_ms":300000},"model":{"display_name":"Claude"}}'
 run_status "$fixture" >/dev/null
@@ -135,9 +149,9 @@ now_ts=$(date +%s)
 # Session A: 3 cumulative rows, peaks at 1000 in / 500 out / 80% ctx / 10min
 # Session B: 2 cumulative rows, peaks at  400 in / 200 out / 50% ctx /  5min
 cat > "$LOG" <<EOF
-{"ts":$now_ts,"session_id":"A","tokens_in":300,"tokens_out":150,"ctx_pct":30,"duration_ms":120000,"model":"claude-opus-4-7"}
-{"ts":$now_ts,"session_id":"A","tokens_in":700,"tokens_out":350,"ctx_pct":60,"duration_ms":360000,"model":"claude-opus-4-7"}
-{"ts":$now_ts,"session_id":"A","tokens_in":1000,"tokens_out":500,"ctx_pct":80,"duration_ms":600000,"model":"claude-opus-4-7"}
+{"ts":$now_ts,"session_id":"A","tokens_in":300,"tokens_out":150,"ctx_pct":30,"duration_ms":120000,"model":"claude-opus-4-8"}
+{"ts":$now_ts,"session_id":"A","tokens_in":700,"tokens_out":350,"ctx_pct":60,"duration_ms":360000,"model":"claude-opus-4-8"}
+{"ts":$now_ts,"session_id":"A","tokens_in":1000,"tokens_out":500,"ctx_pct":80,"duration_ms":600000,"model":"claude-opus-4-8"}
 {"ts":$now_ts,"session_id":"B","tokens_in":200,"tokens_out":100,"ctx_pct":25,"duration_ms":120000,"model":"claude-sonnet-4-6"}
 {"ts":$now_ts,"session_id":"B","tokens_in":400,"tokens_out":200,"ctx_pct":50,"duration_ms":300000,"model":"claude-sonnet-4-6"}
 EOF

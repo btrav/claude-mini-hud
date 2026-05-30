@@ -192,6 +192,24 @@ printf '%s %d %s\n' "$ctx_pct" "$compact_count" "$now" > "$COMPACT_FILE" 2>/dev/
 compact_str=""
 (( compact_count > 0 )) && compact_str=" ${C_DIM}·${C_RESET} ${C_DIM}⟳${compact_count}${C_RESET}"
 
+# ── Model tag ─────────────────────────────────────────────────────────────────
+# Abbreviates display_name to tier-letter + version (e.g. "Opus 4.8" → "O4.8").
+# Set CLAUDE_HUD_MODEL=0 to hide.
+model_str=""
+if [[ "${CLAUDE_HUD_MODEL:-1}" == "1" && -n "$model_name" ]]; then
+  case "$model_name" in
+    *[Oo]pus*)   model_tier="O" ;;
+    *[Ss]onnet*) model_tier="S" ;;
+    *[Hh]aiku*)  model_tier="H" ;;
+    *)           model_tier="${model_name:0:1}" ;;
+  esac
+  model_ver=""
+  if   [[ "$model_name" =~ ([0-9]+\.[0-9]+) ]]; then model_ver="${BASH_REMATCH[1]}"
+  elif [[ "$model_name" =~ ([0-9]+)          ]]; then model_ver="${BASH_REMATCH[1]}"
+  fi
+  model_str=" ${C_DIM}·${C_RESET} ${C_LOW}${model_tier}${model_ver}${C_RESET}"
+fi
+
 # ── Cache state for claude-hud-share and Stop hook ───────────────────────────
 printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
   "$ctx_pct" "$rate_remaining" "$duration_ms" \
@@ -217,5 +235,5 @@ if [[ "${CLAUDE_HUD_NOTIFY:-1}" == "1" ]]; then
 fi
 
 # ── Output ────────────────────────────────────────────────────────────────────
-out="${callsign_str} ${ctx_bar} ${ctx_num_color}${ctx_pct_str}${C_RESET} ${C_DIM}·${C_RESET} ${bat_color}${battery}${bat_pct_str}${C_RESET} ${C_DIM}·${C_RESET} ${C_DIM}${duration_str}${C_RESET}${diff_str}${streak_str}${compact_str}"
+out="${callsign_str} ${ctx_bar} ${ctx_num_color}${ctx_pct_str}${C_RESET} ${C_DIM}·${C_RESET} ${bat_color}${battery}${bat_pct_str}${C_RESET} ${C_DIM}·${C_RESET} ${C_DIM}${duration_str}${C_RESET}${diff_str}${streak_str}${compact_str}${model_str}"
 printf '%b\n' "$out"
