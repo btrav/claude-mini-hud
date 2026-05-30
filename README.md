@@ -44,9 +44,9 @@ Start a new Claude Code session. Done.
 ## what you're looking at
 
 ```
-  ✦CC✦  ▓▓▓▓▓▓░░░░  61%  ·  ▮▮▮▮▯  ·  23m  ·  +142 -38  ·  ♨5d  ·  ⟳2
-  ────  ─────────────────  ─────────  ─────  ───────────  ────     ──
-  state    context bar       battery   time    code diff   streak  compacts
+  ✦CC✦  ▓▓▓▓▓▓░░░░  61%  ·  ▮▮▮▮▯  ·  23m  ·  +142 -38  ·  ♨5d  ·  ⟳2  ·  O4.8
+  ────  ─────────────────  ─────────  ─────  ───────────  ────     ──     ────
+  state    context bar       battery   time    code diff   streak  compacts model
 ```
 
 **Context bar.** Fills as the conversation grows. Green, then amber, then red as Claude's working memory gets tight. When it maxes out, Claude Code compacts. Use `/compact` to control it manually.
@@ -58,6 +58,8 @@ Start a new Claude Code session. Done.
 **Streak.** Days in a row you've used Claude Code. Resets if you skip a day.
 
 **Compaction counter.** Shows `⟳N` when Claude Code has auto-compacted the conversation to free up context. Useful signal for prompting style.
+
+**Model.** The active model, abbreviated to tier and version (`O4.8` = Opus 4.8, `S4.6` = Sonnet 4.6, `H4.5` = Haiku 4.5). Set `CLAUDE_HUD_MODEL=0` to hide it.
 
 **Callsign.** Reads session state at a glance:
 
@@ -116,7 +118,7 @@ claude-hud-share
   │  time  1h 43m                    │
   │  lines +312 -47                  │
   │  ♨ 12 day streak                 │
-  │  claude-sonnet-4-6               │
+  │  claude-opus-4-8                 │
   ├──────────────────────────────────┤
   │  github.com/btrav/claude-mini-hud│
   └──────────────────────────────────┘
@@ -153,7 +155,7 @@ claude-hud-report --all
   Tokens in:  145230
   Tokens out: 48910
   Peak ctx:   89%
-  Models:     claude-sonnet-4-6 (11), claude-opus-4-6 (1)
+  Models:     claude-opus-4-8 (11), claude-sonnet-4-6 (1)
   ─────────────────────────────
 ```
 
